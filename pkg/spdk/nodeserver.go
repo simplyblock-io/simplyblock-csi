@@ -185,6 +185,8 @@ func (ns *nodeServer) NodeStageVolume(_ context.Context, req *csi.NodeStageVolum
 		klog.Errorf("failed to stage volume, volumeID: %s devicePath:%s err: %v", volumeID, devicePath, err)
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	vc["devicePath"] = devicePath
 	// stash VolumeContext to stagingParentPath (useful during Unstage as it has no
 	// VolumeContext passed to the RPC as per the CSI spec)
 	err = util.StashVolumeContext(req.GetVolumeContext(), stagingParentPath)
@@ -297,7 +299,41 @@ func (ns *nodeServer) NodeGetCapabilities(_ context.Context, _ *csi.NodeGetCapab
 
 func (ns *nodeServer) NodeExpandVolume(_ context.Context, req *csi.NodeExpandVolumeRequest) (*csi.NodeExpandVolumeResponse, error) {
 	klog.Infof("NodeExpandVolume: called with args %+v", *req)
-	return &csi.NodeExpandVolumeResponse{}, nil
+
+	volumeID := req.GetVolumeId()
+	volumeMountPath := req.GetVolumePath()
+	updatedSize := req.GetCapacityRange().GetRequiredBytes()
+
+	stagingParentPath := req.GetStagingTargetPath()
+	volumeContext, err := util.LookupVolumeContext(stagingParentPath)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to retrieve volume context for volume %s: %v", volumeID, err)
+	}
+
+	devicePath, ok := volumeContext["devicePath"]
+	if !ok || devicePath == "" {
+		return nil, status.Errorf(codes.Internal, "could not find device path for volume %s", volumeID)
+	}
+
+	resizer := mount.NewResizeFs(exec.New())
+	needsResize, err := resizer.NeedResize(devicePath, volumeMountPath)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to check if volume %s needs resizing: %v", volumeID, err)
+	}
+
+	if needsResize {
+		resized, err := resizer.Resize(devicePath, volumeMountPath)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to resize volume %s: %v", volumeID, err)
+		}
+		if resized {
+			klog.Infof("Successfully resized volume %s (device: %s, mount path: %s)", volumeID, devicePath, volumeMountPath)
+		} else {
+			klog.Warningf("Volume %s did not require resizing", volumeID)
+		}
+	}
+
+	return &csi.NodeExpandVolumeResponse{CapacityBytes: updatedSize}, nil
 }
 
 // must be idempotent
