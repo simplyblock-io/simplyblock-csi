@@ -347,6 +347,11 @@ func (ns *nodeServer) stageVolume(devicePath, stagingPath string, req *csi.NodeS
 		return nil
 	}
 
+	if req.GetVolumeCapability().GetBlock() != nil {
+		klog.Infof("Using Raw Block device")
+		return nil
+	}
+
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
 	// if fsType is not specified, use ext4 as default
 	if fsType == "" {
@@ -419,6 +424,11 @@ func (ns *nodeServer) publishVolume(stagingPath string, req *csi.NodePublishVolu
 	}
 
 	fsType := req.GetVolumeCapability().GetMount().GetFsType()
+
+	if req.GetVolumeCapability().GetBlock() != nil {
+		fsType = ""
+	}
+
 	mntFlags := req.GetVolumeCapability().GetMount().GetMountFlags()
 	mntFlags = append(mntFlags, "bind")
 	klog.Infof("mount %s to %s, fstype: %s, flags: %v", stagingPath, targetPath, fsType, mntFlags)
