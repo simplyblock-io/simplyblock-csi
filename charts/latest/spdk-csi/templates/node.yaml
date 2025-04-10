@@ -50,13 +50,20 @@ spec:
           . /etc/os-release
           case "$ID" in
             ubuntu|debian)
-              INSTALL_CMD="apt-get update && apt-get install -y"
+              PKG_CHECK="dpkg -l"
+              PKG_INSTALL="apt-get update && apt-get install -y"
+              PKGS=(nvme-cli "linux-modules-extra-$(uname -r)")
+              POST_INSTALL="depmod"
               ;;
             centos|rhel|fedora|almalinux|rocky|amzn)
-              INSTALL_CMD="dnf install -y"
+              PKG_CHECK="rpm -q"
+              PKG_INSTALL="dnf install -y"
+              PKGS=(nvme-cli)
               ;;
             suse|opensuse-leap)
-              INSTALL_CMD="zypper install -y"
+              PKG_CHECK="rpm -q"
+              PKG_INSTALL="zypper install -y"
+              PKGS=(nvme-cli)
               ;;
             *)
               echo "Unsupported Linux distribution: $ID"
@@ -64,16 +71,23 @@ spec:
               ;;
           esac
 
-          if ! command -v nvme &> /dev/null; then
-            $INSTALL_CMD nvme-cli
+          PKGS_TO_INSTALL=""
+          for pkg in "${PKGS[@]}"; do
+            if ! $PKG_CHECK "$pkg" >/dev/null 2>&1; then
+              PKGS_TO_INSTALL="$PKGS_TO_INSTALL $pkg"
+            fi
+          done
+          
+          if [ ! -z "$PKGS_TO_INSTALL" ]; then
+            $PKG_INSTALL $PKGS_TO_INSTALL
+            [ ! -z "$POST_INSTALL" ] && $POST_INSTALL
           fi
 
-          if ! lsmod | grep nvme_tcp; then
-            echo "Loading nvme-tcp module..."
-            modprobe nvme-tcp || echo "Failed to load nvme-tcp"
-          else
-            echo "nvme-tcp module is already loaded"
-          fi'
+          for module in nvme-tcp; do
+            if ! lsmod | grep "$module"; then
+              modprobe "$module" || echo "Failed to load $module"
+            fi
+          done'
       {{- end }}
       containers:
       - name: spdkcsi-registrar
