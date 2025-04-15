@@ -1,0 +1,117 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: storage-node-sa
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: storage-node-role
+rules:
+- apiGroups: [""]
+  resources: ["pods", "namespaces", "pods/exec"]
+  verbs: ["list", "get", "create", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments"]
+  verbs: ["create", "delete"]
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pods-list-sn
+subjects:
+- kind: ServiceAccount
+  name: storage-node-sa
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: storage-node-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: simplyblock-storages
+  annotations:
+    helm.sh/hook: post-install
+spec:
+  selector:
+    matchLabels:
+      app: simplyblock-storages
+  template:
+    metadata:
+      labels:
+        app: simplyblock-storages
+    spec:
+      serviceAccountName: storage-node-sa
+      nodeSelector:
+        type: simplyblock-storage-plane
+      volumes:
+        - name: dev-vol
+          hostPath:
+            path: /dev
+        - name: etc-simplyblock
+          hostPath:
+            path: /var/simplyblock
+        - name: host-root
+          hostPath:
+            path: /
+      hostNetwork: true
+
+      initContainers:
+      - name: init-snode
+        image: "public.ecr.aws/simply-block/simplyblock:R25.3-PRE-Hotfix"
+        imagePullPolicy: "Always"
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: host-root
+          mountPath: /host
+        command:
+        - "/bin/sh"
+        - "-c"
+        - |
+          chroot /host /bin/sh -c '
+          modprobe nbd
+          yum install -y pciutils'
+      containers:
+      - name: s-node-api-container
+        image: "public.ecr.aws/simply-block/simplyblock:R25.3-PRE-Hotfix"
+        imagePullPolicy: "Always"
+        command: ["python", "simplyblock_web/node_webapp.py", "storage_node_k8s"]
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: CPUMASK
+          value: "0xf"
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: dev-vol
+          mountPath: /dev
+        - name: etc-simplyblock
+          mountPath: /etc/simplyblock
+        livenessProbe:
+          httpGet:
+            path: /snode/get_firewall
+            port: 5000
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 60
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /snode/get_firewall
+            port: 5000
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 60
+          timeoutSeconds: 5
+          failureThreshold: 3
