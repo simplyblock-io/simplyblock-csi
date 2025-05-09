@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) Arm Limited and Contributors
+# Copyright (c) Intel Corporation
+
+{{- if .Values.externallyManagedConfigmap }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: simplyblock-csi-cm
+data:
+  # uuid: the simplyblock cluster UUID
+  # ip: the management IP of the simplyblock cluster
+  # targetAddr: target service IP
+  config.json: |-
+{{ toJson .Values.csiConfig | indent 4 -}}
+{{- end }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: simplyblock-caching-node-restart-script-cm
+data:
+  restart_script.py: |
+    import json, os, requests
+
+    secret = json.loads(os.getenv("SPDKCSI_SECRET"))
+    cluster_secret = secret['simplybk']['secret']
+
+    cluster_config = json.loads(os.getenv("CLUSTER_CONFIG"))
+    cluster_uuid = cluster_config['simplybk']['uuid']
+    cluster_ip = cluster_config['simplybk']['ip']
+    hostname = os.getenv('HOSTNAME')
+    hostname = hostname.split(".")[0]
+
+    url = f'{cluster_ip}/cachingnode/recreate/{hostname}'
+    headers = {
+        'Authorization': f'{cluster_uuid} {cluster_secret}'
+    }
+
+    print(f"making GET request to: {url}")
+    response = requests.get(url, headers=headers)
+
+    print("Response Text:", response.text)
+    print("Response Code:", response.status_code)

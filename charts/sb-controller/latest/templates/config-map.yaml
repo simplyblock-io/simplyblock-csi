@@ -1,51 +1,3 @@
-# SPDX-License-Identifier: Apache-2.0
-# Copyright (c) Arm Limited and Contributors
-# Copyright (c) Intel Corporation
-
-{{- if .Values.externallyManagedConfigmap }}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: simplyblock-csi-cm
-data:
-  # uuid: the simplyblock cluster UUID
-  # ip: the management IP of the simplyblock cluster
-  # targetAddr: target service IP
-  config.json: |-
-{{ toJson .Values.csiConfig | indent 4 -}}
-{{- end }}
-
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: simplyblock-caching-node-restart-script-cm
-data:
-  restart_script.py: |
-    import json, os, requests
-
-    secret = json.loads(os.getenv("SPDKCSI_SECRET"))
-    cluster_secret = secret['simplybk']['secret']
-
-    cluster_config = json.loads(os.getenv("CLUSTER_CONFIG"))
-    cluster_uuid = cluster_config['simplybk']['uuid']
-    cluster_ip = cluster_config['simplybk']['ip']
-    hostname = os.getenv('HOSTNAME')
-    hostname = hostname.split(".")[0]
-
-    url = f'{cluster_ip}/cachingnode/recreate/{hostname}'
-    headers = {
-        'Authorization': f'{cluster_uuid} {cluster_secret}'
-    }
-
-    print(f"making GET request to: {url}")
-    response = requests.get(url, headers=headers)
-
-    print("Response Text:", response.text)
-    print("Response Code:", response.status_code)
-
----
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -56,6 +8,10 @@ data:
     import os
     import requests
     from time import sleep
+    from kubernetes import client, config
+
+    config.load_incluster_config() 
+    v1 = client.CoreV1Api()
 
     def get_node_statuses(cluster_ip, cluster_uuid, cluster_secret):
         url = f"{cluster_ip}/storagenode"
@@ -75,14 +31,17 @@ data:
             print(f"Error occurred while getting node statuses: {e}")
         return []
 
-    def activate_cluster_if_needed(cluster_ip, cluster_uuid, cluster_secret, distr_ndcs, distr_npcs):
+    def activate_cluster_if_needed(cluster_ip, cluster_uuid, cluster_secret, distr_ndcs, distr_npcs, label_selector):
+        nodes = v1.list_node(label_selector=label_selector)
+        
+        total_nodes = int(len(nodes.items))
         total_value = distr_ndcs + distr_npcs + 1
         retries = total_value * 60
         while retries > 0:
             node_statuses = get_node_statuses(cluster_ip, cluster_uuid, cluster_secret)
             online_nodes = [node for node in node_statuses if node.get('status') == 'online' and len(node.get('nvme_devices'))>0]
 
-            if len(online_nodes) >= total_value:
+            if len(online_nodes) >= total_nodes and len(online_nodes) >= total_value :
                 print("Proceeding with cluster activation.")
                 url = f"{cluster_ip}/cluster/activate/{cluster_uuid}"
                 headers = {
@@ -112,6 +71,8 @@ data:
     distr_ndcs = int(os.getenv("DISTR_NDCS", 1)) if os.getenv("DISTR_NDCS", "").isdigit() else 1
     distr_npcs = int(os.getenv("DISTR_NPCS", 1)) if os.getenv("DISTR_NPCS", "").isdigit() else 1
 
+    label_selector = "type=simplyblock-storage-plane"
+
     secret = json.loads(os.getenv("SPDKCSI_SECRET"))
     cluster_secret = secret['simplybk']['secret']
 
@@ -127,7 +88,7 @@ data:
     print(f"action type: {action_type}. performing appropriate action")
     if action_type == "cl_activate":
         # Check if we should activate the cluster
-        activate_cluster_if_needed(cluster_ip, cluster_uuid, cluster_secret, distr_ndcs, distr_npcs)
+        activate_cluster_if_needed(cluster_ip, cluster_uuid, cluster_secret, distr_ndcs, distr_npcs, label_selector)
     elif action_type in ["sn_restart", "sn_shutdown", "sn_remove", "make_sec_primary"] and uuid:
         if action_type == "sn_restart":
             url = f"{cluster_ip}/storagenode/restart/{uuid}"

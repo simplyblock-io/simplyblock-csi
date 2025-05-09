@@ -9,22 +9,22 @@ metadata:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: simplyblock-storage-node-handler
+  name: simplyblock-storage-node-controller
   labels:
-    app: storage-node-handler
+    app: storage-node-controller
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: storage-node-handler
+      app: storage-node-controller
   template:
     metadata:
       labels:
-        app: storage-node-handler
+        app: storage-node-controller
     spec:
       serviceAccountName: simplyblock-storage-node-service-account
       containers:
-      - name: storage-node-handler
+      - name: storage-node-controller
         image: "{{ .Values.image.storageNode.repository }}:{{ .Values.image.storageNode.tag }}"
         imagePullPolicy: "{{ .Values.image.storageNode.pullPolicy }}"
         env:
@@ -40,32 +40,18 @@ spec:
               key: config.json
         - name: IFNAME
           value: "{{ .Values.storagenode.ifname }}"
-        - name: MAXLVOL
-          value: "{{ .Values.storagenode.maxLvol }}"
-        - name: CPUMASK
-          value: "{{ .Values.storagenode.cpuMask }}"
         - name: MAXSNAP
           value: "{{ .Values.storagenode.maxSnap }}"
-        - name: MAXPROV
-          value: "{{ .Values.storagenode.maxProv }}"
         - name: JMPERCENT
           value: "{{ .Values.storagenode.jmPercent }}"
         - name: NUMPARTITIONS
           value: "{{ .Values.storagenode.numPartitions }}"
-        - name: NUMDEVICES
-          value: "{{ .Values.storagenode.numDevices }}"
-        - name: NUMDISTRIBS
-          value: "{{ .Values.storagenode.numDistribs }}"
         - name: DISABLEHAJM
           value: "{{ .Values.storagenode.disableHAJM }}"
         - name: ENABLETESTDEVICE
           value: "{{ .Values.storagenode.enableTestDevice }}"
         - name: DATANICS
           value: "{{ .Values.storagenode.dataNics }}"
-        - name: IOBUFSMALLPOOLCOUNT
-          value: "{{ .Values.storagenode.iobufSmallPoolCount }}"
-        - name: IOBUFLARGEPOOLCOUNT
-          value: "{{ .Values.storagenode.iobufLargePoolCount }}"
         - name: SPDKIMAGE
           value: "{{ .Values.storagenode.spdkImage }}"
         - name: NAMESPACE

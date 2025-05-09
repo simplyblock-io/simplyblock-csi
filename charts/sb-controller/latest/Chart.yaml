@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) Arm Limited and Contributors
+# Copyright (c) Intel Corporation
+---
+apiVersion: v1
+appVersion: latest
+description: Simplyblock Storage Controller for Kubernetes
+name: sb-controller
+version: "v0.0.1"
+keywords:
+- spdk
+- simplyblock
+- controller
+home: https://github.com/simplyblock-io/spdk-csi
+sources:
+- https://github.com/simplyblock-io/spdk-csi/tree/master/charts/sb-controller
+

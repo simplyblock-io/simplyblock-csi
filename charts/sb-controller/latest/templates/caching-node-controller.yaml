@@ -1,0 +1,58 @@
+{{- if .Values.cachingnode.create -}}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: simplyblock-caching-node-service-account
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: simplyblock-caching-node-controller
+  labels:
+    app: caching-node-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: caching-node-controller
+  template:
+    metadata:
+      labels:
+        app: caching-node-controller
+    spec:
+      serviceAccountName: simplyblock-caching-node-service-account
+      containers:
+      - name: caching-node-controller
+        image: "{{ .Values.image.cachingNode.repository }}:{{ .Values.image.cachingNode.tag }}"
+        imagePullPolicy: "{{ .Values.image.cachingNode.pullPolicy }}"
+        env:
+        - name: SPDKCSI_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: simplyblock-csi-secret
+              key: secret.json
+        - name: CLUSTER_CONFIG
+          valueFrom:
+            configMapKeyRef:
+              name: simplyblock-csi-cm
+              key: config.json
+        - name: IFNAME
+          value: "{{ .Values.cachingnode.ifname }}"
+        - name: CPUMASK
+          value: "{{ .Values.cachingnode.cpuMask }}"
+        - name: SPDKMEM
+          value: "{{ .Values.cachingnode.spdkMem }}"
+        - name: SPDKIMAGE
+          value: "{{ .Values.cachingnode.spdkImage }}"
+        - name: MULTIPATHING
+          value: "{{ .Values.cachingnode.multipathing }}"
+
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+      restartPolicy: Always
+
+{{- end -}}

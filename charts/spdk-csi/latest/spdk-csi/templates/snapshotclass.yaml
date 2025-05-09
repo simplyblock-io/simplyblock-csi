@@ -14,7 +14,7 @@ kind: VolumeSnapshotClass
 metadata:
   name: simplyblock-csi-snapshotclass
   annotations:
-    helm.sh/hook: pre-delete,pre-rollback,post-install,post-upgrade
+    helm.sh/hook: post-install,post-upgrade
 driver: csi.simplyblock.io
 deletionPolicy: Delete
 

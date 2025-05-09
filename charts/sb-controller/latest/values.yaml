@@ -1,0 +1,47 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) Arm Limited and Contributors
+# Copyright (c) Intel Corporation
+---
+
+image:
+  storageNode:
+    repository: simplyblock/storage-node-handler
+    tag: latest
+    pullPolicy: Always
+  cachingNode:
+    repository: simplyblock/caching-node-handler
+    tag: latest
+    pullPolicy: Always
+  mgmtAPI:
+    repository: python
+    tag: "3.10"
+    pullPolicy: Always
+serviceAccount:
+  # Specifies whether a serviceAccount should be created
+  create: true
+
+rbac:
+  # Specifies whether RBAC resources should be created
+  create: true
+
+cachingnode:
+  create: false
+  ifname: eth0
+  cpuMask: 
+  spdkMem:
+  spdkImage: 
+  multipathing: true
+
+storagenode:
+  create: false
+  ifname: eth0
+  distr_ndcs: "1"
+  distr_npcs: "1"
+  spdkImage:
+  maxSnap: 10
+  jmPercent: 3
+  numPartitions: 0
+  disableHAJM: false
+  enableTestDevice: false
+  dataNics:
+      

@@ -39,7 +39,7 @@ kind: DaemonSet
 metadata:
   name: {{ .name }}
   annotations:
-    helm.sh/hook: pre-delete,pre-rollback,post-install,post-upgrade
+    helm.sh/hook: post-install,post-upgrade
 spec:
   selector:
     matchLabels:
@@ -73,6 +73,32 @@ spec:
         value: {{ .tolerations.value }}
         {{- end }}
       {{- end }}
+      initContainers:
+      - name: s-node-api-config-generator
+        image: "{{ $.Values.image.simplyblock.repository }}:{{ $.Values.image.simplyblock.tag }}"
+        imagePullPolicy: "{{ $.Values.image.simplyblock.pullPolicy }}"
+        command:
+          - "python"
+          - "simplyblock_web/node_configure.py"
+          - "--max-lvol={{ $.Values.storagenode.maxLvol }}"
+          - "--max-size={{ $.Values.storagenode.maxProv }}"
+          {{- if $.Values.storagenode.pciAllowed }}
+          - "--pci-allowed={{ $.Values.storagenode.pciAllowed }}"
+          {{- end }}
+          {{- if $.Values.storagenode.pciBlocked }}
+          - "--pci-blocked={{ $.Values.storagenode.pciBlocked }}"
+          {{- end }}
+          {{- if $.Values.storagenode.socketsToUse }}
+          - "--sockets-to-use={{ $.Values.storagenode.socketsToUse }}"
+          {{- end }}
+          {{- if $.Values.storagenode.nodesPerSocket }}
+          - "--nodes-per-socket={{ $.Values.storagenode.nodesPerSocket }}"
+          {{- end }}
+        volumeMounts:
+          - name: etc-simplyblock
+            mountPath: /etc/simplyblock
+        securityContext:
+          privileged: true
       containers:
       - name: s-node-api-container
         image: "{{ $.Values.image.simplyblock.repository }}:{{ $.Values.image.simplyblock.tag }}"

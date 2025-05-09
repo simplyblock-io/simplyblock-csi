@@ -47,7 +47,7 @@ image:
     pullPolicy: Always
   mgmtAPI:
     repository: python
-    tag: 3.10
+    tag: "3.10"
     pullPolicy: Always
 serviceAccount:
   # Specifies whether a serviceAccount should be created
@@ -149,28 +149,19 @@ storagenode:
   maxProv: 150g
   jmPercent: 3
   numPartitions: 0
-  numDevices: 1
-  numDistribs: 2
   disableHAJM: false
   enableTestDevice: false
   dataNics:
-  iobufSmallPoolCount: 
-  iobufLargePoolCount:
+  pciAllowed:
+  pciBlocked: 
+  socketsToUse: 
+  nodesPerSocket:
   initContainers:
     enabled: false
   daemonsets:
   - name: simplyblock-storage-node-ds
     appLabel: storage-node
     nodeSelector: simplyblock-storage-plane
-    tolerations:
-      create: false
-      operator: Exists
-      effect: 
-      key: 
-      value:
-  - name: simplyblock-storage-node-ds-reserve
-    appLabel: storage-node-reserve
-    nodeSelector: simplyblock-storage-plane-reserve
     tolerations:
       create: false
       operator: Exists

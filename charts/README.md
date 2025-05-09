@@ -21,11 +21,11 @@ A node can pre-allocate huge pages for multiple sizes.
 
 ```console
 
-helm repo add spdk-csi https://raw.githubusercontent.com/simplyblock-io/spdk-csi/master/charts
+helm repo add spdk-csi https://raw.githubusercontent.com/simplyblock-io/spdk-csi/master/charts/spdk-csi
 
 helm repo update
 
-helm install -n spdk-csi --create-namespace spdk-csi spdk-csi/spdk-csi \
+helm install -n simplyblk --create-namespace spdk-csi spdk-csi/spdk-csi \
   --set csiConfig.simplybk.uuid=ace14718-81eb-441f-9d4c-d71ce6904196 \
   --set csiConfig.simplybk.ip=https://96xdzb9ne7.execute-api.us-east-1.amazonaws.com \
   --set csiSecret.simplybk.secret=k6U5moyrY5vCVtSiCcKo \
@@ -35,7 +35,7 @@ helm install -n spdk-csi --create-namespace spdk-csi spdk-csi/spdk-csi \
 ## After installation succeeds, you can get a status of Chart
 
 ```console
-helm status "spdk-csi" --namespace "spdk-csi"
+helm status "spdk-csi" --namespace "simplyblk"
 ```
 
 ## Delete Chart
@@ -43,13 +43,13 @@ helm status "spdk-csi" --namespace "spdk-csi"
 If you want to delete your Chart, use this command
 
 ```bash
-helm uninstall "spdk-csi" --namespace "spdk-csi"
+helm uninstall "spdk-csi" --namespace "simplyblk"
 ```
 
 If you want to delete the namespace, use this command
 
 ```bash
-kubectl delete namespace spdk-csi
+kubectl delete namespace simplyblk
 ```
 
 ## driver parameters
@@ -135,22 +135,14 @@ The following table lists the configurable parameters of the latest Simplyblock 
 | `storagenode.daemonsets[0].tolerations.key	`      | the key of tolerations for the storage node	                                                                            | `<empty>`                                                                |  |
 | `storagenode.daemonsets[0].tolerations.operator	`  | the operator for the storage node tolerations	                                                                          |                                            `Exists`                                                                    |  |
 | `storagenode.daemonsets[0].tolerations.value	`    | the value of tolerations for the storage node	                                                                          |                                            `<empty>`                                                        |  |
-| `storagenode.daemonsets[1].name`                   | The name of the reserve storage node DaemonSet	                                                                                    |                                              `storage-node-ds`                                                          |  |
-| `storagenode.daemonsets[1].appLabel`               | The label applied to the reserve storage node DaemonSet for identification	                                                                    | `storage-node`                                                                     |  |
-| `storagenode.daemonsets[1].nodeSelector`           | The node selector to specify which nodes the reserve storage node DaemonSet should run on		                                                                    | `simplyblock-storage-plane-reserve`                                                                     |  |
-| `storagenode.daemonsets[1].tolerations.create`     | Whether to create tolerations for the reserve storage node                                                                       | `false`                                                                     |  |
-| `storagenode.daemonsets[1].tolerations.effect`     | the effect of tolerations on the reserve storage node	                                                                          | `<empty>`                                                               |  |
-| `storagenode.daemonsets[1].tolerations.key	`      | the key of tolerations for the reserve storage node	                                                                            | `<empty>`                                                                |  |
-| `storagenode.daemonsets[1].tolerations.operator	`  | the operator for the reserve storage node tolerations	                                                                          |                                            `Exists`                                                                    |  |
-| `storagenode.daemonsets[1].tolerations.value	`    | the value of tolerations for the reserve storage node	                                                                          |                                            `<empty>`                                                        |  |
-| `storagenode.daemonsets[2].name`                   | The name of the restart storage node DaemonSet	                                                                                    |                                              `storage-node-ds-restart`                                                          |  |
-| `storagenode.daemonsets[2].appLabel`               | The label applied to the restart storage node DaemonSet for identification	                                                                    | `storage-node-restart`                                                                     |  |
-| `storagenode.daemonsets[2].nodeSelector`           | The node selector to specify which nodes the restart storage node DaemonSet should run on		                                                                    | `simplyblock-storage-plane-restart`                                                                     |  |
-| `storagenode.daemonsets[2].tolerations.create`     | Whether to create tolerations for the restart storage node                                                                       | `false`                                                                     |  |
-| `storagenode.daemonsets[2].tolerations.effect`     | the effect of tolerations on the restart storage node	                                                                          | `<empty>`                                                               |  |
-| `storagenode.daemonsets[2].tolerations.key	`      | the key of tolerations for the restart storage node	                                                                            | `<empty>`                                                                |  |
-| `storagenode.daemonsets[2].tolerations.operator	`  | the operator for the restart storage node tolerations	                                                                          |                                            `Exists`                                                                    |  |
-| `storagenode.daemonsets[2].tolerations.value	`    | the value of tolerations for the restart storage node	                                                                          |                                            `<empty>`                                                        |  |
+| `storagenode.daemonsets[1].name`                   | The name of the restart storage node DaemonSet	                                                                                    |                                              `storage-node-ds-restart`                                                          |  |
+| `storagenode.daemonsets[1].appLabel`               | The label applied to the restart storage node DaemonSet for identification	                                                                    | `storage-node-restart`                                                                     |  |
+| `storagenode.daemonsets[1].nodeSelector`           | The node selector to specify which nodes the restart storage node DaemonSet should run on		                                                                    | `simplyblock-storage-plane-restart`                                                                     |  |
+| `storagenode.daemonsets[1].tolerations.create`     | Whether to create tolerations for the restart storage node                                                                       | `false`                                                                     |  |
+| `storagenode.daemonsets[1].tolerations.effect`     | the effect of tolerations on the restart storage node	                                                                          | `<empty>`                                                               |  |
+| `storagenode.daemonsets[1].tolerations.key	`      | the key of tolerations for the restart storage node	                                                                            | `<empty>`                                                                |  |
+| `storagenode.daemonsets[1].tolerations.operator	`  | the operator for the restart storage node tolerations	                                                                          |                                            `Exists`                                                                    |  |
+| `storagenode.daemonsets[1].tolerations.value	`    | the value of tolerations for the restart storage node	                                                                          |                                            `<empty>`                                                        |  |
 | `storagenode.initContainers.enabled`       | Whether to create init container for the storage node                                                                       | `false`                                                                     |  |
 | `storagenode.create`                   |  Whether to create storage node on kubernetes worker node                                                                           | `false`                                                        |  |
 | `storagenode.ifname`                   | the default interface to be used for binding the storage node to host interface                                          | `eth0`                                                                     |  |
@@ -163,8 +155,80 @@ The following table lists the configurable parameters of the latest Simplyblock 
 | `storagenode.numPartitions`            | the number of partitions to create per device                                                                            | `0`                                                                        |  |
 | `storagenode.numDevices`               | the number of devices per storage node	                                                                                  | `1`                                                                        |  |
 | `storagenode.numDistribs`              | the number of distribs per storage node	                                                                                  | `2`                                                                        |  |
-| `storagenode.iobufSmallPoolCount`      | bdev_set_options param	                                                                                                  | `<empty>`                                                                  |  |
-| `storagenode.iobufLargePoolCount`      | bdev_set_options param	                                                                                                  | `<empty>`                                                                  |  |
+| `storagenode.disableHAJM`              | Disable ha Journal Manager	                                                                                                  | `false`                                                                  |  |
+| `storagenode.enableTestDevice`         | Enable creation of test device                                                                                                  | `false`                                                                  |  |
+| `storagenode.dataNics`                 | Data interface names                                                                                                  | `<empty>`                                                                |  |
+| `storagenode.pciAllowed`                 | the list of allowed nvme pcie addresses                                                                                                  | `<empty>`                                                                |  |
+| `storagenode.pciBlocked`                 | the list of blocked nvme pcie addresses                                                                                                  | `<empty>`                                                                |  |
+| `storagenode.socketsToUse`               | the list of sockets to use                                                                                                  | `<empty>`                                                                |  |
+| `storagenode.nodesPerSocket`             | The number of nodes to use per socket                                                                                                  | `<empty>`                                                                |  |
+
+
+## Install latest Simplyblock Storage Controller via `helm install`
+
+```console
+
+helm repo add spdk-csi https://raw.githubusercontent.com/simplyblock-io/spdk-csi/master/charts/sb-controller
+
+helm repo update
+
+helm install -n simplyblk --create-namespace sb-controller sb-controller/sb-controller \
+  --set storagenode.create=true \
+  --set cachingnode.create=false 
+```
+
+## After installation succeeds, you can get a status of Chart
+
+```console
+helm status "sb-controller" --namespace "simplyblk"
+```
+
+## Delete Chart
+
+If you want to delete your Chart, use this command
+
+```bash
+helm uninstall "sb-controller" --namespace "simplyblk"
+```
+
+If you want to delete the namespace, use this command
+
+```bash
+kubectl delete namespace simplyblk
+``
+
+## Controller parameters
+
+The following table lists the configurable parameters of the latest Simplyblock Storage Controller chart and default values.
+
+| Parameter                              | Description                                                                                                              | Default                                                                 |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `image.storageNode.repository`         | simplyblock storage-node controller docker image                                                                                            | `simplyblock/simplyblock`                                               |
+| `image.storageNode.tag`                | simplyblock storage-node controller docker image tag                                                                                        | `release_v1`                                                            |
+| `image.storageNode.pullPolicy`         | simplyblock storage-node controller image pull policy                                                                                        | `Always`                                                                |
+| `image.cachingNode.repository`         | simplyblock caching-node controller docker image                                                                                            | `simplyblock/simplyblock`                                               |
+| `image.cachingNode.tag`                | simplyblock caching-node controller docker image tag                                                                                        | `release_v1`                                                            |
+| `image.cachingNode.pullPolicy`         | simplyblock caching-node controller image pull policy                                                                                        | `Always`                                                                |
+| `image.mgmtAPI.repository`             | simplyblock mgmt api image                                                                                            | `python`                                               |
+| `image.mgmtAPI.tag`                    | simplyblock mgmt api image tag                                                                                        | `3.10`                                                            |
+| `image.mgmtAPI.pullPolicy`             | simplyblock mgmt api image pull policy                                                                                        | `Always`                                                                |
+| `serviceAccount.create`                | whether to create service account of spdkcsi-controller                                                                  | `true`                                                                  |
+| `rbac.create`                          | whether to create rbac of spdkcsi-controller                                                                                | `true`                                                                  |
+|
+| `cachingnode.create`                   |  Whether to create caching node on kubernetes worker node                                                                              | `false`                                                        |  |
+| `cachingnode.ifname`                   | the default interface to be used for binding the caching node to host interface                                          | `eth0`                                                                     |  |
+| `cachingnode.cpuMask`                  | the cpu mask for the spdk app to use for caching node                                                                    | `<empty>`                                                                  |  |
+| `cachingnode.spdkMem`                  |  the amount of hugepage memory to allocate for caching node                                                                                                                        | `<empty>`                                                                  |  |
+| `cachingnode.spdkImage`                | SPDK image uri for caching node                                                                                                                     | `<empty>`                                                                  |  |
+| `cachingnode.multipathing`             | Enable multipathing for lvol connection                                                                                                                        | `true`                                                                     |  |
+| `storagenode.create`                   |  Whether to create storage node on kubernetes worker node                                                                           | `false`                                                        |  |
+| `storagenode.ifname`                   | the default interface to be used for binding the storage node to host interface                                          | `eth0`                                                                     |  |
+| `storagenode.spdkImage`                | SPDK image uri for storage node                                                                                                                        | `<empty>`                                                                  |  |
+| `storagenode.maxSnap`                  | the default max snapshot per storage node	                                                                              | `10`                                                                       |  |
+| `storagenode.jmPercent`                | the number in percent to use for JM from each device	                                                                    | `3`                                                                        |  |
+| `storagenode.numPartitions`            | the number of partitions to create per device                                                                            | `0`                                                                        |  |
+| `storagenode.numDevices`               | the number of devices per storage node	                                                                                  | `1`                                                                        |  |
+| `storagenode.numDistribs`              | the number of distribs per storage node	                                                                                  | `2`                                                                        |  |
 | `storagenode.disableHAJM`              | Disable ha Journal Manager	                                                                                                  | `false`                                                                  |  |
 | `storagenode.enableTestDevice`         | Enable creation of test device                                                                                                  | `false`                                                                  |  |
 | `storagenode.dataNics`                 | Data interface names                                                                                                  | `<empty>`                                                                |  |

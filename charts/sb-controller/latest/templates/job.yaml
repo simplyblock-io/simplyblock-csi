@@ -11,13 +11,14 @@ spec:
         - name: script-config
           configMap:
             name: simplyblock-mgmt-api-script-cm
+      serviceAccountName: simplyblock-storage-node-service-account
       containers:
       - name: mgmt-api
         image: "{{ .Values.image.mgmtAPI.repository }}:{{ .Values.image.mgmtAPI.tag }}"
         command: ["/bin/sh", "-c"]
         imagePullPolicy: "{{ .Values.image.mgmtAPI.pullPolicy }}"
         args:
-          - "pip install requests && python3 /config/action.py"
+          - "pip install requests kubernetes && python3 /config/action.py"
         env:
         - name: SPDKCSI_SECRET
           valueFrom:
@@ -34,9 +35,9 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         - name: DISTR_NDCS
-          value: "{{ .Values.logicalVolume.distr_ndcs }}"
+          value: "{{ .Values.storagenode.distr_ndcs }}"
         - name: DISTR_NPCS
-          value: "{{ .Values.logicalVolume.distr_npcs }}"  
+          value: "{{ .Values.storagenode.distr_npcs }}"  
         - name: ACTION_TYPE
           value: "cl_activate" #options: "sn_idle", "sn_restart", "sn_shutdown", "sn_remove", "cl_activate", "make_sec_primary"
         - name: SNODE_UUID
