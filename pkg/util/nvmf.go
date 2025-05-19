@@ -27,26 +27,15 @@ import (
 
 type NodeNVMf struct {
 	client *RPCClient
-
-	clusterID     string
-	clusterIP     string
-	clusterSecret string
 }
 
-// func newNVMf(client *rpcClient, targetType, targetAddr string) *nodeNVMf {
-// config.Simplybk.Uuid, config.Simplybk.Ip, secret.Simplybk.Secret
+// NewNVMf creates a new NVMf client
 func NewNVMf(clusterID, clusterIP, clusterSecret string) *NodeNVMf {
 	client := RPCClient{
-		ClusterID:     clusterID,
-		ClusterIP:     clusterIP,
-		ClusterSecret: clusterSecret,
 		HTTPClient:    &http.Client{Timeout: cfgRPCTimeoutSeconds * time.Second},
 	}
 	return &NodeNVMf{
 		client:        &client,
-		clusterID:     clusterID,
-		clusterIP:     clusterIP,
-		clusterSecret: clusterSecret,
 	}
 }
 
@@ -111,6 +100,7 @@ func (node *NodeNVMf) GetVolume(lvolName, poolName string) (string, error) {
 	return lvol.UUID, err
 }
 
+// GetVolumeSize returns the size of the volume
 func (node *NodeNVMf) GetVolumeSize(lvolID string) (string, error) {
 	lvol, err := node.client.getVolume(lvolID)
 	if err != nil {
@@ -121,6 +111,7 @@ func (node *NodeNVMf) GetVolumeSize(lvolID string) (string, error) {
 	return size, err
 }
 
+// ListVolumes returns a list of volumes
 func (node *NodeNVMf) ListVolumes() ([]*BDev, error) {
 	return node.client.listVolumes()
 }
@@ -135,6 +126,7 @@ func (node *NodeNVMf) ListSnapshots() ([]*SnapshotResp, error) {
 	return node.client.listSnapshots()
 }
 
+// CloneSnapshot clones a snapshot to a new volume
 func (node *NodeNVMf) CloneSnapshot(snapshotID, cloneName, newSize string) (string, error) {
 	lvolID, err := node.client.cloneSnapshot(snapshotID, cloneName, newSize)
 	if err != nil {
@@ -144,6 +136,7 @@ func (node *NodeNVMf) CloneSnapshot(snapshotID, cloneName, newSize string) (stri
 	return lvolID, nil
 }
 
+// CreateSnapshot creates a snapshot of a volume
 func (node *NodeNVMf) CreateSnapshot(lvolID, snapshotName string) (string, error) {
 	snapshotID, err := node.client.snapshot(lvolID, snapshotName)
 	if err != nil {
@@ -183,6 +176,7 @@ func (node *NodeNVMf) PublishVolume(lvolID string) error {
 	return nil
 }
 
+// UnpublishVolume unexports a volume through NVMf target
 func (node *NodeNVMf) UnpublishVolume(lvolID string) error {
 	_, err := node.client.CallSBCLI("GET", "/lvol/"+lvolID, nil)
 	if err != nil {
