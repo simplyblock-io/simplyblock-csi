@@ -63,16 +63,14 @@ type initiatorNVMf struct {
 	nrIoQueues     string
 	ctrlLossTmo    string
 	model          string
-	client         RPCClient
 }
 
 // initiatorCache is an implementation of NVMf cache initiator
 type initiatorCache struct {
 	lvol   string
 	model  string
-	client RPCClient
+	client RPCClient // TODO: support multi cluster for cache
 }
-
 
 type cachingNodeList struct {
 	Hostname string `json:"hostname"`
@@ -112,8 +110,39 @@ type nvmeDeviceInfo struct {
 	serialNumber string
 }
 
+// NewsimplyBlockClient create a new Simplyblock client
+// should be called for every CSI driver operation
+func NewsimplyBlockClient(clusterID string) (*NodeNVMf, error) {
+	// get spdk node configs, see deploy/kubernetes/config-map.yaml
+	var config struct {
+		Simplybk struct {
+			IP string `json:"ip"`
+		} `json:"simplybk"`
+	}
+	configFile := FromEnv("SPDKCSI_CONFIG", "/etc/spdkcsi-config/config.json")
+	err := ParseJSONFile(configFile, &config)
+	if err != nil {
+		return nil, err
+	}
+
+	var secrets map[string]string
+	secretFile := FromEnv("SPDKCSI_SECRET", "/etc/spdkcsi-secret/secret.json")
+	err = ParseJSONFile(secretFile, &secrets)
+	if err != nil {
+		return nil, err
+	}
+
+	secret, ok := secrets[clusterID]
+	if !ok {
+		return nil, fmt.Errorf("failed to find secret for clusterID %s", clusterID)
+	}
+
+	klog.Infof("Simplyblock client created for ClusterID:%s url=%s", clusterID, config.Simplybk.IP)
+	return NewNVMf(clusterID, config.Simplybk.IP, secret), nil
+}
+
 // NewSpdkCsiInitiator creates a new SpdkCsiInitiator based on the target type
-func NewSpdkCsiInitiator(volumeContext map[string]string, spdkNode *NodeNVMf) (SpdkCsiInitiator, error) {
+func NewSpdkCsiInitiator(volumeContext map[string]string) (SpdkCsiInitiator, error) {
 	targetType := strings.ToLower(volumeContext["targetType"])
 	switch targetType {
 	case TargetTypeNVMf:
@@ -132,14 +161,12 @@ func NewSpdkCsiInitiator(volumeContext map[string]string, spdkNode *NodeNVMf) (S
 			nrIoQueues:     volumeContext["nrIoQueues"],
 			ctrlLossTmo:    volumeContext["ctrlLossTmo"],
 			model:          volumeContext["model"],
-			client:         *spdkNode.client,
 		}, nil
 
 	case "cache":
 		return &initiatorCache{
-			lvol:   volumeContext["uuid"],
-			model:  volumeContext["model"],
-			client: *spdkNode.client,
+			lvol:  volumeContext["uuid"],
+			model: volumeContext["model"],
 		}, nil
 
 	default:
@@ -151,7 +178,7 @@ func (cache *initiatorCache) Connect() (string, error) {
 	// get the hostname
 	hostname, err := os.Hostname()
 	if err != nil {
-		os.Exit(1)
+		panic(err)
 	}
 	hostname = strings.Split(hostname, ".")[0]
 	klog.Info("hostname: ", hostname)
@@ -478,12 +505,12 @@ func getSubsystemsForDevice(devicePath string) ([]subsystemResponse, error) {
 	return subsystems, nil
 }
 
-func getLvolIDFromNQN(nqn string) string {
+func getLvolIDFromNQN(nqn string) (clusterID, lvolID string) {
 	parts := strings.Split(nqn, ":lvol:")
 	if len(parts) > 1 {
-		return parts[1]
+		return parts[0], parts[1]
 	}
-	return ""
+	return "", ""
 }
 
 func parseAddress(address string) string {
@@ -496,7 +523,7 @@ func parseAddress(address string) string {
 	return ""
 }
 
-func reconnectSubsystems(spdkNode *NodeNVMf) error {
+func reconnectSubsystems() error {
 	devices, err := getNVMeDeviceInfos()
 	if err != nil {
 		return fmt.Errorf("failed to get NVMe device paths: %v", err)
@@ -511,7 +538,7 @@ func reconnectSubsystems(spdkNode *NodeNVMf) error {
 
 		for _, host := range subsystems {
 			for _, subsystem := range host.Subsystems {
-				lvolID := getLvolIDFromNQN(subsystem.NQN)
+				clusterID, lvolID := getLvolIDFromNQN(subsystem.NQN)
 				if lvolID == "" {
 					continue
 				}
@@ -523,12 +550,9 @@ func reconnectSubsystems(spdkNode *NodeNVMf) error {
 						continue
 					}
 					for _, path := range subsystem.Paths {
-						if path.State == "connecting" && device.serialNumber == "single" {
-							if err := checkOnlineNode(spdkNode, lvolID, path); err != nil {
-								klog.Errorf("failed to reconnect subsystem for lvolID %s: %v", lvolID, err)
-							}
-						} else if (path.ANAState == "optimized" || path.ANAState == "non-optimized") && device.serialNumber == "ha" {
-							if err := checkOnlineNode(spdkNode, lvolID, path); err != nil {
+						if path.State == "connecting" && device.serialNumber == "single" || 
+						((path.ANAState == "optimized" || path.ANAState == "non-optimized") && device.serialNumber == "ha") {
+							if err := checkOnlineNode(clusterID, lvolID, path); err != nil {
 								klog.Errorf("failed to reconnect subsystem for lvolID %s: %v", lvolID, err)
 							}
 						}
@@ -540,8 +564,13 @@ func reconnectSubsystems(spdkNode *NodeNVMf) error {
 	return nil
 }
 
-func checkOnlineNode(spdkNode *NodeNVMf, lvolID string, path path) error {
-	nodeInfo, err := fetchNodeInfo(spdkNode, lvolID)
+func checkOnlineNode(clusterID, lvolID string, path path) error {
+	sbcClient, err := NewsimplyBlockClient(clusterID)
+	if err != nil {
+		return fmt.Errorf("failed to create SPDK client: %w", err)
+	}
+
+	nodeInfo, err := fetchNodeInfo(sbcClient, lvolID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch node info: %w", err)
 	}
@@ -551,12 +580,12 @@ func checkOnlineNode(spdkNode *NodeNVMf, lvolID string, path path) error {
 			continue
 		}
 
-		if !isNodeOnline(spdkNode, nodeID) {
+		if !isNodeOnline(sbcClient, nodeID) {
 			klog.Infof("Node %s is not yet online", nodeID)
 			continue
 		}
 
-		connections, err := fetchLvolConnection(spdkNode, lvolID)
+		connections, err := fetchLvolConnection(sbcClient, lvolID)
 		if err != nil {
 			klog.Errorf("Failed to get lvol connection: %v", err)
 			continue
@@ -607,7 +636,7 @@ func shouldConnectToNode(anaState, currentNodeID, targetNodeID string) bool {
 }
 
 func fetchNodeInfo(spdkNode *NodeNVMf, lvolID string) (*NodeInfo, error) {
-	resp, err := spdkNode.client.CallSBCLI("GET", "/lvol/"+lvolID, nil)
+	resp, err := spdkNode.Client.CallSBCLI("GET", "/lvol/"+lvolID, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch node info: %v", err)
 	}
@@ -625,7 +654,7 @@ func fetchNodeInfo(spdkNode *NodeNVMf, lvolID string) (*NodeInfo, error) {
 }
 
 func isNodeOnline(spdkNode *NodeNVMf, nodeID string) bool {
-	resp, err := spdkNode.client.CallSBCLI("GET", "/storagenode/"+nodeID, nil)
+	resp, err := spdkNode.Client.CallSBCLI("GET", "/storagenode/"+nodeID, nil)
 	if err != nil {
 		klog.Errorf("failed to fetch node status for node %s: %v", nodeID, err)
 		return false
@@ -640,7 +669,7 @@ func isNodeOnline(spdkNode *NodeNVMf, nodeID string) bool {
 }
 
 func fetchLvolConnection(spdkNode *NodeNVMf, lvolID string) ([]*LvolConnectResp, error) {
-	resp, err := spdkNode.client.CallSBCLI("GET", "/lvol/connect/"+lvolID, nil)
+	resp, err := spdkNode.Client.CallSBCLI("GET", "/lvol/connect/"+lvolID, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch connection: %v", err)
 	}
@@ -709,14 +738,11 @@ func confirmSubsystemStillSinglePath(subsystem *subsystem, devicePath string) bo
 	return true
 }
 
-func MonitorConnection(spdkNode *NodeNVMf) {
+// MonitorConnection monitors the connection to the SPDK node and reconnects if necessary
+// TODO: make this monitoring multiple connections
+func MonitorConnection() {
 	for {
-		if spdkNode.client == nil {
-			klog.Errorf("RPC client is not initialized")
-			continue
-		}
-
-		if err := reconnectSubsystems(spdkNode); err != nil {
+		if err := reconnectSubsystems(); err != nil {
 			klog.Errorf("Error: %v\n", err)
 			continue
 		}

@@ -26,7 +26,7 @@ import (
 )
 
 type NodeNVMf struct {
-	client *RPCClient
+	Client *RPCClient
 }
 
 // NewNVMf creates a new NVMf client
@@ -35,22 +35,22 @@ func NewNVMf(clusterID, clusterIP, clusterSecret string) *NodeNVMf {
 		HTTPClient:    &http.Client{Timeout: cfgRPCTimeoutSeconds * time.Second},
 	}
 	return &NodeNVMf{
-		client:        &client,
+		Client:        &client,
 	}
 }
 
 func (node *NodeNVMf) Info() string {
-	return node.client.info()
+	return node.Client.info()
 }
 
 func (node *NodeNVMf) LvStores() ([]LvStore, error) {
-	return node.client.lvStores()
+	return node.Client.lvStores()
 }
 
 // VolumeInfo returns a string:string map containing information necessary
 // for CSI node(initiator) to connect to this target and identify the disk.
 func (node *NodeNVMf) VolumeInfo(lvolID string) (map[string]string, error) {
-	lvol, err := node.client.getVolumeInfo(lvolID)
+	lvol, err := node.Client.getVolumeInfo(lvolID)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ type CreateLVolData struct {
 
 // CreateVolume creates a logical volume and returns volume ID
 func (node *NodeNVMf) CreateVolume(params *CreateLVolData) (string, error) {
-	lvolID, err := node.client.createVolume(params)
+	lvolID, err := node.Client.createVolume(params)
 	if err != nil {
 		return "", err
 	}
@@ -93,7 +93,7 @@ func (node *NodeNVMf) CreateVolume(params *CreateLVolData) (string, error) {
 
 // GetVolume returns the volume id of the given volume name and lvstore name. return error if not found.
 func (node *NodeNVMf) GetVolume(lvolName, poolName string) (string, error) {
-	lvol, err := node.client.getVolume(fmt.Sprintf("%s/%s", poolName, lvolName))
+	lvol, err := node.Client.getVolume(fmt.Sprintf("%s/%s", poolName, lvolName))
 	if err != nil {
 		return "", err
 	}
@@ -102,7 +102,7 @@ func (node *NodeNVMf) GetVolume(lvolName, poolName string) (string, error) {
 
 // GetVolumeSize returns the size of the volume
 func (node *NodeNVMf) GetVolumeSize(lvolID string) (string, error) {
-	lvol, err := node.client.getVolume(lvolID)
+	lvol, err := node.Client.getVolume(lvolID)
 	if err != nil {
 		return "", err
 	}
@@ -113,22 +113,22 @@ func (node *NodeNVMf) GetVolumeSize(lvolID string) (string, error) {
 
 // ListVolumes returns a list of volumes
 func (node *NodeNVMf) ListVolumes() ([]*BDev, error) {
-	return node.client.listVolumes()
+	return node.Client.listVolumes()
 }
 
 // ResizeVolume resizes a volume
 func (node *NodeNVMf) ResizeVolume(lvolID string, newSize int64) (bool, error) {
-	return node.client.resizeVolume(lvolID, newSize)
+	return node.Client.resizeVolume(lvolID, newSize)
 }
 
 // ListSnapshots returns a list of snapshots
 func (node *NodeNVMf) ListSnapshots() ([]*SnapshotResp, error) {
-	return node.client.listSnapshots()
+	return node.Client.listSnapshots()
 }
 
 // CloneSnapshot clones a snapshot to a new volume
 func (node *NodeNVMf) CloneSnapshot(snapshotID, cloneName, newSize string) (string, error) {
-	lvolID, err := node.client.cloneSnapshot(snapshotID, cloneName, newSize)
+	lvolID, err := node.Client.cloneSnapshot(snapshotID, cloneName, newSize)
 	if err != nil {
 		return "", err
 	}
@@ -138,7 +138,7 @@ func (node *NodeNVMf) CloneSnapshot(snapshotID, cloneName, newSize string) (stri
 
 // CreateSnapshot creates a snapshot of a volume
 func (node *NodeNVMf) CreateSnapshot(lvolID, snapshotName string) (string, error) {
-	snapshotID, err := node.client.snapshot(lvolID, snapshotName)
+	snapshotID, err := node.Client.snapshot(lvolID, snapshotName)
 	if err != nil {
 		return "", err
 	}
@@ -148,7 +148,7 @@ func (node *NodeNVMf) CreateSnapshot(lvolID, snapshotName string) (string, error
 
 // DeleteVolume deletes a volume
 func (node *NodeNVMf) DeleteVolume(lvolID string) error {
-	err := node.client.deleteVolume(lvolID)
+	err := node.Client.deleteVolume(lvolID)
 	if err != nil {
 		return err
 	}
@@ -158,7 +158,7 @@ func (node *NodeNVMf) DeleteVolume(lvolID string) error {
 
 // DeleteSnapshot deletes a snapshot
 func (node *NodeNVMf) DeleteSnapshot(snapshotID string) error {
-	err := node.client.deleteSnapshot(snapshotID)
+	err := node.Client.deleteSnapshot(snapshotID)
 	if err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func (node *NodeNVMf) DeleteSnapshot(snapshotID string) error {
 
 // PublishVolume exports a volume through NVMf target
 func (node *NodeNVMf) PublishVolume(lvolID string) error {
-	_, err := node.client.CallSBCLI("GET", "/lvol/"+lvolID, nil)
+	_, err := node.Client.CallSBCLI("GET", "/lvol/"+lvolID, nil)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func (node *NodeNVMf) PublishVolume(lvolID string) error {
 
 // UnpublishVolume unexports a volume through NVMf target
 func (node *NodeNVMf) UnpublishVolume(lvolID string) error {
-	_, err := node.client.CallSBCLI("GET", "/lvol/"+lvolID, nil)
+	_, err := node.Client.CallSBCLI("GET", "/lvol/"+lvolID, nil)
 	if err != nil {
 		return err
 	}
