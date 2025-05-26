@@ -20,6 +20,7 @@ parameters:
   distr_ndcs: "1"
   distr_npcs: "1"
   lvol_priority_class: "0"
+  cluster_id: "aaaabbbbcccc"
 reclaimPolicy: Delete
 volumeBindingMode: Immediate
 allowVolumeExpansion: true
