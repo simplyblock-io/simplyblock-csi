@@ -289,7 +289,6 @@ func prepareCreateVolumeReq(ctx context.Context, req *csi.CreateVolumeRequest, s
 		HostID:       hostID,
 		LvolID:       lvolID,
 		PvcName:      pvcName,
-		PvcNamespace: pvcNamespace,
 	}
 	return &createVolReq, nil
 }
