@@ -89,7 +89,6 @@ type CreateLVolData struct {
 	HostID       string `json:"host_id"`
 	LvolID       string `json:"uid"`
 	PvcName      string `json:"pvc_name"`
-	PvcNamespace string `json:"namespace"`
 }
 
 // CreateVolume creates a logical volume and returns volume ID

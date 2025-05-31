@@ -8,14 +8,14 @@ metadata:
   name: spdkcsi-pvc
   annotations:
     simplybk/secret-name: simplyblock-pvc-keys
-    simplybk/secret-namespace: default
+    simplybk/secret-namespace: simplyblk
 spec:
   accessModes:
   - ReadWriteOnce
   resources:
     requests:
       storage: 10Gi
-  storageClassName: spdkcsi-sc
+  storageClassName: simplyblock-csi-sc
 
 ---
 kind: Pod
