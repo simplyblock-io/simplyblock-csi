@@ -128,6 +128,7 @@ type BDev struct {
 	LvolSize int64  `json:"size"`
 }
 
+// RPCClient holds the connection information to the SimplyBlock Cluster
 type RPCClient struct {
 	ClusterID     string
 	ClusterIP     string
@@ -135,6 +136,7 @@ type RPCClient struct {
 	HTTPClient    *http.Client
 }
 
+// CSIPoolsResp is the response of /pool/get_pools
 type CSIPoolsResp struct {
 	FreeClusters  int64  `json:"free_clusters"`
 	ClusterSize   int64  `json:"cluster_size"`
@@ -143,6 +145,7 @@ type CSIPoolsResp struct {
 	UUID          string `json:"uuid"`
 }
 
+// SnapshotResp is the response of /snapshot
 type SnapshotResp struct {
 	Name         string `json:"snapshot_name"`
 	UUID         string `json:"uuid"`
@@ -155,10 +158,18 @@ type SnapshotResp struct {
 	} `json:"lvol"`
 }
 
+// CreateLVolData is the response for /lvol
 type CreateVolResp struct {
 	LVols []string `json:"lvols"`
 }
 
+// ResizeVolReq is the request for /lvol/resize
+type ResizeVolReq struct {
+	LvolID  string `json:"lvol_id"`
+	NewSize int64  `json:"size"`
+}
+
+// Error represents SBCLI's common error response
 type Error struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
@@ -168,6 +179,7 @@ func (client *RPCClient) info() string {
 	return client.ClusterID
 }
 
+// lvStores returns all available logical volume stores
 func (client *RPCClient) lvStores() ([]LvStore, error) {
 	var result []CSIPoolsResp
 
@@ -213,7 +225,7 @@ func (client *RPCClient) createVolume(params *CreateLVolData) (string, error) {
 	return lvolID, err
 }
 
-// get a volume and return a BDev,, lvsName/lvolName
+// getVolume gets a volume and return a BDev,, lvsName/lvolName
 func (client *RPCClient) getVolume(lvolID string) (*BDev, error) {
 	var result []BDev
 
@@ -235,6 +247,7 @@ func (client *RPCClient) getVolume(lvolID string) (*BDev, error) {
 	return &result[0], err
 }
 
+// listVolumes returns all volumes
 func (client *RPCClient) listVolumes() ([]*BDev, error) {
 	var results []*BDev
 
@@ -253,7 +266,7 @@ func (client *RPCClient) listVolumes() ([]*BDev, error) {
 	return results, nil
 }
 
-// get a volume and return a BDev
+// getVolumeInfo gets a volume along with its connection info
 func (client *RPCClient) getVolumeInfo(lvolID string) (map[string]string, error) {
 	var result []*LvolConnectResp
 
@@ -300,6 +313,7 @@ func (client *RPCClient) getVolumeInfo(lvolID string) (map[string]string, error)
 	}, nil
 }
 
+// deleteVolume deletes a volume
 func (client *RPCClient) deleteVolume(lvolID string) error {
 	_, err := client.CallSBCLI("DELETE", "/lvol/"+lvolID, nil)
 	if errorMatches(err, ErrJSONNoSuchDevice) {
@@ -309,11 +323,7 @@ func (client *RPCClient) deleteVolume(lvolID string) error {
 	return err
 }
 
-type ResizeVolReq struct {
-	LvolID  string `json:"lvol_id"`
-	NewSize int64  `json:"size"`
-}
-
+// resizeVolume resizes a volume
 func (client *RPCClient) resizeVolume(lvolID string, size int64) (bool, error) {
 	params := ResizeVolReq{
 		LvolID:  lvolID,
@@ -331,6 +341,7 @@ func (client *RPCClient) resizeVolume(lvolID string, size int64) (bool, error) {
 	return result, nil
 }
 
+// cloneSnapshot clones a snapshot
 func (client *RPCClient) cloneSnapshot(snapshotID, cloneName, newSize string) (string, error) {
 	params := struct {
 		SnapshotID string `json:"snapshot_id"`
@@ -360,6 +371,7 @@ func (client *RPCClient) cloneSnapshot(snapshotID, cloneName, newSize string) (s
 	return lvolID, err
 }
 
+// listSnapshots returns all snapshots
 func (client *RPCClient) listSnapshots() ([]*SnapshotResp, error) {
 	var results []*SnapshotResp
 
@@ -378,16 +390,7 @@ func (client *RPCClient) listSnapshots() ([]*SnapshotResp, error) {
 	return results, nil
 }
 
-func (client *RPCClient) deleteSnapshot(snapshotID string) error {
-	_, err := client.CallSBCLI("DELETE", "/snapshot/"+snapshotID, nil)
-
-	if errorMatches(err, ErrJSONNoSuchDevice) {
-		err = ErrJSONNoSuchDevice // may happen in concurrency
-	}
-
-	return err
-}
-
+// snapshot creates a snapshot
 func (client *RPCClient) snapshot(lvolID, snapShotName string) (string, error) {
 	params := struct {
 		LvolName     string `json:"lvol_id"`
@@ -412,6 +415,18 @@ func (client *RPCClient) snapshot(lvolID, snapShotName string) (string, error) {
 	return snapshotID, err
 }
 
+// deleteSnapshot deletes a snapshot
+func (client *RPCClient) deleteSnapshot(snapshotID string) error {
+	_, err := client.CallSBCLI("DELETE", "/snapshot/"+snapshotID, nil)
+
+	if errorMatches(err, ErrJSONNoSuchDevice) {
+		err = ErrJSONNoSuchDevice // may happen in concurrency
+	}
+
+	return err
+}
+
+// CallSBCLI is a generic function to call the SimplyBlock API
 func (client *RPCClient) CallSBCLI(method, path string, args interface{}) (interface{}, error) {
 	data := []byte(`{}`)
 	var err error
@@ -470,6 +485,7 @@ func (client *RPCClient) CallSBCLI(method, path string, args interface{}) (inter
 	return response.Results, nil
 }
 
+// errorMatches checks if the error message from the full error
 func errorMatches(errFull, errJSON error) bool {
 	if errFull == nil {
 		return false
