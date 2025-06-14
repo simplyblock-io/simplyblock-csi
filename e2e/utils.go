@@ -916,7 +916,11 @@ func restartStorageNode(c kubernetes.Interface, nodeID string) error {
 	s := creds.Simplyblock
 	err = s.restartStorageNode(nodeID)
 	if err != nil {
-		return err
+		e2elog.Logf("failed to restart storage node: %s. Trying again...", err)
+		err = s.restartStorageNode(nodeID)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
