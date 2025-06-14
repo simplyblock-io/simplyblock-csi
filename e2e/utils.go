@@ -18,6 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 
@@ -916,7 +917,7 @@ func restartStorageNode(c kubernetes.Interface, nodeID string) error {
 	s := creds.Simplyblock
 	err = s.restartStorageNode(nodeID)
 	if err != nil {
-		e2elog.Logf("failed to restart storage node: %s. Trying again...", err)
+		klog.Infof("failed to restart storage node: %s. Trying again...", err)
 		err = s.restartStorageNode(nodeID)
 		if err != nil {
 			return err
