@@ -17,6 +17,9 @@ rules:
 - apiGroups: ["apps"]
   resources: ["deployments"]
   verbs: ["create", "delete"]
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["create", "delete", "get", "list", "watch"]
 
 ---
 kind: ClusterRoleBinding
@@ -57,6 +60,9 @@ spec:
         - name: etc-simplyblock
           hostPath:
             path: /var/simplyblock
+        - name: host-sys
+          hostPath:
+            path: /sys
       hostNetwork: true
       {{- if .tolerations.create }}
       tolerations:
@@ -108,6 +114,8 @@ spec:
           mountPath: /dev
         - name: etc-simplyblock
           mountPath: /etc/simplyblock
+        - name: host-sys
+          mountPath: /sys
         livenessProbe:
           httpGet:
             path: /snode/get_firewall
