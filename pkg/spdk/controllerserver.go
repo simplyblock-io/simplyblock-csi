@@ -278,6 +278,13 @@ func prepareCreateVolumeReq(ctx context.Context, req *csi.CreateVolumeRequest, s
 
 	var cryptoKey1 string
 	var cryptoKey2 string
+	var pvcFullName string
+
+	if pvcNameSelected && pvcNamespaceSelected {
+		pvcFullName = fmt.Sprintf("%s/%s", pvcNamespace, pvcName)
+	} else {
+		pvcFullName = pvcName
+	}
 
 	if encryption {
 		if pvcNameSelected && pvcNamespaceSelected {
@@ -322,7 +329,7 @@ func prepareCreateVolumeReq(ctx context.Context, req *csi.CreateVolumeRequest, s
 		CryptoKey2:  cryptoKey2,
 		HostID:      hostID,
 		LvolID:      lvolID,
-		PvcName:     pvcName,
+		PvcName:     pvcFullName,
 	}
 	return &createVolReq, nil
 }
