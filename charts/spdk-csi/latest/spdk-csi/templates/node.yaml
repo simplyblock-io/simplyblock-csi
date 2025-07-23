@@ -119,10 +119,10 @@ spec:
         - name: csi-nodeserver-config
           mountPath: /etc/spdkcsi-nodeserver-config/
           readOnly: true
-        - name: csi-config
+        - name: csi-config # todo: remove this
           mountPath: /etc/spdkcsi-config/
           readOnly: true
-        - name: csi-secret
+        - name: csi-secret # todo: remove this
           mountPath: /etc/spdkcsi-secret/
           readOnly: true
         - name: host-modules
