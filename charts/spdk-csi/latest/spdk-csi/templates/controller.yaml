@@ -127,19 +127,7 @@ spec:
         volumeMounts:
         - name: socket-dir
           mountPath: /csi
-        - name: csi-config
-          mountPath: /etc/spdkcsi-config/
-          readOnly: true
-        - name: csi-secret
-          mountPath: /etc/spdkcsi-secret/
-          readOnly: true
       volumes:
       - name: socket-dir
         emptyDir:
           medium: "Memory"
-      - name: csi-config
-        configMap:
-          name: simplyblock-csi-cm
-      - name: csi-secret
-        secret:
-          secretName: simplyblock-csi-secret-v2

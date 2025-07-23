@@ -1,0 +1,9 @@
+apiVersion: simplyblock.io/v1alpha1
+kind: SimplyBlockCluster
+metadata:
+  name: first-cluster
+  namespace: default
+spec:
+  clusterID: .Values.csiConfig.simplybk.uuid
+  clusterEndpoint: .Values.csiConfig.simplybk.ip
+  clusterSecret: .Values.csiSecret.simplybk.secret

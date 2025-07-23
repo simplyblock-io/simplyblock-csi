@@ -29,7 +29,12 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/klog"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -124,35 +129,54 @@ type ClustersInfo struct {
 // NewsimplyBlockClient create a new Simplyblock client
 // should be called for every CSI driver operation
 func NewsimplyBlockClient(clusterID string) (*NodeNVMf, error) {
-	secretFile := FromEnv("SPDKCSI_SECRET", "/etc/spdkcsi-secret/secret.json")
-	var clusters ClustersInfo
-	err := ParseJSONFile(secretFile, &clusters)
+	config, err := rest.InClusterConfig()
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse secret file: %w", err)
+		return nil, fmt.Errorf("failed to get in-cluster config: %w", err)
 	}
 
-	var clusterConfig *ClusterConfig
-	for _, cluster := range clusters.Clusters {
-		if cluster.ClusterID == clusterID {
-			clusterConfig = &cluster
-			break
+	dynClient, err := dynamic.NewForConfig(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create dynamic client: %w", err)
+	}
+
+	// GVR for the SimplyBlockCluster CR
+	gvr := schema.GroupVersionResource{
+		Group:    "simplyblock.io",
+		Version:  "v1alpha1",
+		Resource: "simplyblock-clusters",
+	}
+
+	namespace := os.Getenv("POD_NAMESPACE")
+	if namespace == "" {
+		namespace = "default"
+	}
+
+	crList, err := dynClient.Resource(gvr).Namespace(namespace).List(context.TODO(), v1.ListOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list SimplyBlockClusters: %w", err)
+	}
+
+	for _, item := range crList.Items {
+		spec, found, err := unstructured.NestedMap(item.Object, "spec")
+		if err != nil || !found {
+			continue
+		}
+
+		id, _, _ := unstructured.NestedString(spec, "clusterID")
+		endpoint, _, _ := unstructured.NestedString(spec, "clusterEndpoint")
+		secret, _, _ := unstructured.NestedString(spec, "clusterSecret")
+
+		if id == clusterID {
+			if endpoint == "" || secret == "" {
+				return nil, fmt.Errorf("invalid config in CR for clusterID %s", clusterID)
+			}
+
+			klog.Infof("Simplyblock client created for ClusterID:%s, Endpoint:%s", id, endpoint)
+			return NewNVMf(id, endpoint, secret), nil
 		}
 	}
-	
-	if clusterConfig == nil {
-		return nil, fmt.Errorf("failed to find secret for clusterID %s", clusterID)
-	}
 
-	if clusterConfig.ClusterEndpoint == "" || clusterConfig.ClusterSecret == "" {
-		return nil, fmt.Errorf("invalid cluster configuration for clusterID %s", clusterID)
-	}
-
-	// Log and return the newly created Simplyblock client.
-	klog.Infof("Simplyblock client created for ClusterID:%s, Endpoint:%s", 
-	clusterConfig.ClusterID, 
-	clusterConfig.ClusterEndpoint,
-	)
-	return NewNVMf(clusterID, clusterConfig.ClusterEndpoint, clusterConfig.ClusterSecret), nil
+	return nil, fmt.Errorf("no matching SimplyBlockCluster found for clusterID %s", clusterID)
 }
 
 // NewSpdkCsiInitiator creates a new SpdkCsiInitiator based on the target type
