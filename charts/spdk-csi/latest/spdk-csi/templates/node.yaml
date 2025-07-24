@@ -73,10 +73,10 @@ spec:
           mountPath: /registration
       - name: csi-node
         securityContext:
-          privileged: true
-          capabilities:
-            add: ["SYS_ADMIN", "SYS_MODULE"]
-          allowPrivilegeEscalation: true
+          privileged: true # Needs to run as root user to access kubelet plugins folder and to load kernel modules
+          runAsUser: 0
+          runAsGroup: 0
+          readOnlyRootFilesystem: true
         image: "{{ .Values.image.csi.repository }}:{{ .Values.image.csi.tag }}"
         imagePullPolicy: {{ .Values.image.csi.pullPolicy }}
         args:
