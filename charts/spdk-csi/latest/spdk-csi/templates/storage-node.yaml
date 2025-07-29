@@ -75,6 +75,14 @@ spec:
           hostPath:
             path: /lib/modules
       hostNetwork: true
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL
+        readOnlyRootFilesystem: true
       {{- if .tolerations.create }}
       tolerations:
       {{- range .tolerations.list }}
